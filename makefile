@@ -1,10 +1,10 @@
 #
-# Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
-# Cypress Semiconductor Corporation. All Rights Reserved.
+# Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+# an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 #
 # This software, including source code, documentation and related
-# materials ("Software"), is owned by Cypress Semiconductor Corporation
-# or one of its subsidiaries ("Cypress") and is protected by and subject to
+# materials ("Software") is owned by Cypress Semiconductor Corporation
+# or one of its affiliates ("Cypress") and is protected by and subject to
 # worldwide patent protection (United States and foreign),
 # United States copyright laws and international treaty provisions.
 # Therefore, you may use this Software only as provided in the license
@@ -13,7 +13,7 @@
 # If no EULA applies, Cypress hereby grants you a personal, non-exclusive,
 # non-transferable license to copy, modify, and compile the Software
 # source code solely for use in connection with Cypress's
-# integrated circuit products. Any reproduction, modification, translation,
+# integrated circuit products.  Any reproduction, modification, translation,
 # compilation, or representation of this Software except as specified
 # above is prohibited without the express written permission of Cypress.
 #
@@ -47,7 +47,10 @@ TARGET=CYW920721B2EVK-02
 SUPPORTED_TARGETS = \
   CYW920721B2EVK-02 \
   CYW920706WCDEVAL \
-  CYW9M2BASE-43012BT
+  CYW9M2BASE-43012BT \
+  CYW920721M2EVK-01 \
+  CYW920721M2EVK-02 \
+  CYW943012BTEVK-01
 
 #
 # Advanced Configuration
@@ -128,9 +131,16 @@ endif # TARGET
 ifeq ($(TARGET),CYW9M2BASE-43012BT)
 CY_APP_DEFINES += -DAK_4679_CODEC_ENABLE
 CY_APP_DEFINES += -DNO_PUART_SUPPORT=1
-
 COMPONENTS += cyw9bt_audio
 COMPONENTS += codec_ak4679_lib
+COMPONENTS += audiomanager
+endif # TARGET
+
+ifeq ($(TARGET),CYW943012BTEVK-01)
+CY_APP_DEFINES += -DCS47L35_CODEC_ENABLE
+CY_APP_DEFINES += -DNO_PUART_SUPPORT=1
+COMPONENTS += cyw9bt_audio2
+COMPONENTS += codec_cs47l35_lib
 COMPONENTS += audiomanager
 endif # TARGET
 
