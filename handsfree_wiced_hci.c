@@ -468,6 +468,12 @@ void hci_control_hf_handle_command(uint16_t opcode, uint8_t* p_data, uint32_t le
                 WICED_BT_HFP_HF_AT_SET, WICED_BT_HFP_HF_AT_FMT_INT, NULL, 200);
 #endif
         break;
+    case HCI_CONTROL_HF_COMMAND_LONG_BUTTON_PRESS:
+            /* send a corresponding AT command */
+        WICED_BT_TRACE("Send AT+BVRA=2\n");
+            hci_control_hf_send_at_cmd(handsfree_ctxt_data.rfcomm_handle,"+BVRA",
+                    WICED_BT_HFP_HF_AT_SET, WICED_BT_HFP_HF_AT_FMT_INT, NULL, 2);
+        break;
 
     default:
         {
