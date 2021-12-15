@@ -50,7 +50,9 @@ SUPPORTED_TARGETS = \
   CYW9M2BASE-43012BT \
   CYW920721M2EVK-01 \
   CYW920721M2EVK-02 \
-  CYW943012BTEVK-01
+  CYW943012BTEVK-01 \
+  CYW955572BTEVK-01 \
+  CYW920721M2EVB-03
 
 #
 # Advanced Configuration
@@ -78,6 +80,7 @@ UART?=AUTO
 XIP?=xip
 TRANSPORT?=UART
 ENABLE_DEBUG?=0
+AUDIO_SHIELD_20721M2EVB_03_INCLUDED?=0
 
 # wait for SWD attach
 ifeq ($(ENABLE_DEBUG),1)
@@ -116,17 +119,20 @@ COMPONENTS += cyw9bt_audio2
 COMPONENTS += codec_cs47l35_lib
 endif
 
-ifeq ($(TARGET),CYW920721M2EVK-02)
+ifneq ($(filter $(TARGET),CYW920721M2EVK-02 CYW920721M2EVB-03),)
 CY_APP_DEFINES += -DCS47L35_CODEC_ENABLE
 COMPONENTS += cyw9bt_audio2
 COMPONENTS += codec_cs47l35_lib
 endif # TARGET
 
-ifeq ($(TARGET),CYW920721B2EVK-03)
-CY_APP_DEFINES += -DCS47L35_CODEC_ENABLE
-COMPONENTS += cyw9bt_audio2
-COMPONENTS += codec_cs47l35_lib
-endif # TARGET
+ifeq ($(TARGET),CYW920721M2EVB-03)
+AUDIO_SHIELD_20721M2EVB_03_INCLUDED=1
+endif
+
+ifeq ($(AUDIO_SHIELD_20721M2EVB_03_INCLUDED),1)
+DISABLE_COMPONENTS += bsp_design_modus
+COMPONENTS += bsp_design_modus_shield
+endif
 
 ifeq ($(TARGET),CYW9M2BASE-43012BT)
 CY_APP_DEFINES += -DAK_4679_CODEC_ENABLE
@@ -142,6 +148,20 @@ CY_APP_DEFINES += -DNO_PUART_SUPPORT=1
 COMPONENTS += cyw9bt_audio2
 COMPONENTS += codec_cs47l35_lib
 COMPONENTS += audiomanager
+endif # TARGET
+
+ifeq ($(TARGET),CYW955572BTEVK-01)
+# Application Configuration
+CY_APP_DEFINES += -DAPP_CFG_ENABLE_BR_AUDIO=1
+CY_APP_DEFINES += -DWICED_BT_HFP_HF_WBS_INCLUDED=TRUE
+CY_APP_DEFINES += -DCS47L35_CODEC_ENABLE
+COMPONENTS += cyw9bt_audio2
+COMPONENTS += codec_cs47l35_lib
+COMPONENTS += audiomanager
+
+# Apply new Audio Profiles
+DISABLE_COMPONENTS += handsfree_profile
+COMPONENTS += handsfree_profile_btstack
 endif # TARGET
 
 ################################################################################

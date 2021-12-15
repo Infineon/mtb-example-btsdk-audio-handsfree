@@ -57,7 +57,9 @@
 #define KEY_INFO_POOL_BUFFER_COUNT              10  //Correspond's to the number of peer devices
 
 extern const wiced_bt_cfg_settings_t handsfree_cfg_settings;
+#ifndef BTSTACK_VER
 extern const wiced_bt_cfg_buf_pool_t handsfree_cfg_buf_pools[];
+#endif
 extern const wiced_bt_audio_config_buffer_t handsfree_audio_buf_config;
 extern uint32_t  hci_control_proc_rx_cmd( uint8_t *p_data, uint32_t length );
 
@@ -192,7 +194,6 @@ typedef struct
 extern handsfrees_app_globals handsfree_app_states;
 
 /* External Function Definitions */
-extern void wiced_bt_trace_array( const char *string, const uint8_t* array, const uint16_t len );
 extern uint16_t wiced_app_cfg_sdp_record_get_size(void);
 extern void hci_control_send_device_started_evt( void );
 extern void hci_control_send_pairing_completed_evt( uint8_t status , wiced_bt_device_address_t bdaddr );

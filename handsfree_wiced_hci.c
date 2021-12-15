@@ -72,7 +72,11 @@ void hci_control_hci_trace_cback( wiced_bt_hci_trace_type_t type, uint16_t lengt
 {
     //Enable below to receive traces over HCI UART
     //send the trace
+#if BTSTACK_VER >= 0x03000001
+    wiced_transport_send_hci_trace(type, p_data, length);
+#else
     wiced_transport_send_hci_trace( NULL, type, length, p_data  );
+#endif
 }
 
 /*
@@ -121,6 +125,7 @@ void hci_control_inquiry_result_cback( wiced_bt_dev_inquiry_scan_result_t *p_inq
     if ( p_inquiry_result == NULL )
     {
         code = HCI_CONTROL_EVENT_INQUIRY_COMPLETE;
+        WICED_BT_TRACE( "inquiry complete \n");
     }
     else
     {
@@ -134,7 +139,7 @@ void hci_control_inquiry_result_cback( wiced_bt_dev_inquiry_scan_result_t *p_inq
 
         // currently callback does not pass the data of the adv data, need to go through the data
         // zero len in the LTV means that there is no more data
-        while ( ( len = *p_eir_data ) != 0 )
+        while ( ( p_eir_data != NULL ) && ( len = *p_eir_data ) != 0 )
         {
             // In the HCI event all parameters should fit into 255 bytes
             if ( p + len + 1 > tx_buf + 255 )
@@ -243,12 +248,21 @@ void hci_control_send_device_started_evt( void )
 {
     wiced_transport_send_data( HCI_CONTROL_EVENT_DEVICE_STARTED, NULL, 0 );
 
-    WICED_BT_TRACE( "maxLinks:%d maxChannels:%d maxpsm:%d rfcom max links%d, rfcom max ports:%d\n",
+#if BTSTACK_VER >= 0x03000001
+    WICED_BT_TRACE( "maxLinks:%d maxChannels:%d maxpsm:%d rfcom max links:%d, rfcom max ports:%d\n",
+                (handsfree_cfg_settings.p_br_cfg)->br_max_simultaneous_links,
+                (handsfree_cfg_settings.p_l2cap_app_cfg)->max_app_l2cap_channels,
+                (handsfree_cfg_settings.p_l2cap_app_cfg)->max_app_l2cap_psms,
+                (handsfree_cfg_settings.p_br_cfg)->rfcomm_cfg.max_links,
+                (handsfree_cfg_settings.p_br_cfg)->rfcomm_cfg.max_ports );
+#else
+    WICED_BT_TRACE( "maxLinks:%d maxChannels:%d maxpsm:%d rfcom max links:%d, rfcom max ports:%d\n",
                 handsfree_cfg_settings.l2cap_application.max_links,
                 handsfree_cfg_settings.l2cap_application.max_channels,
                 handsfree_cfg_settings.l2cap_application.max_psm,
                 handsfree_cfg_settings.rfcomm_cfg.max_links,
                 handsfree_cfg_settings.rfcomm_cfg.max_ports );
+#endif
 }
 
 /*
@@ -321,7 +335,9 @@ uint32_t hci_control_proc_rx_cmd( uint8_t *p_data, uint32_t length )
     if( length < 4 )
     {
         WICED_BT_TRACE("invalid params\n");
+#ifndef BTSTACK_VER
         wiced_transport_free_buffer( p_rx_buf );
+#endif
         return HCI_CONTROL_STATUS_INVALID_ARGS;
     }
 
@@ -350,8 +366,10 @@ uint32_t hci_control_proc_rx_cmd( uint8_t *p_data, uint32_t length )
         break;
     }
 
+#ifndef BTSTACK_VER
     //Freeing the buffer in which data is received
     wiced_transport_free_buffer( p_rx_buf );
+#endif
     return status;
 }
 

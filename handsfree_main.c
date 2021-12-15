@@ -100,7 +100,8 @@
 #include "wiced_hal_nvram.h"
 #include "wiced_hal_puart.h"
 #include "wiced_bt_stack.h"
-#if defined(CYW20721B2) || defined(CYW43012C0)
+#include "wiced_bt_ble.h"
+#if defined(CYW20721B2) || defined(CYW43012C0) || defined(CYW55572A1)
 #include "wiced_audio_manager.h"
 #endif
 
@@ -111,7 +112,7 @@ uint8_t g_wiced_memory_pre_init_max_ble_connections = 4;
 uint8_t g_wiced_memory_pre_init_num_ble_rl = 16;
 #endif
 
-#if defined(CYW20721B2) || defined(CYW43012C0)
+#if defined(CYW20721B2) || defined(CYW43012C0) || defined(CYW55572A1)
 static int32_t stream_id = WICED_AUDIO_MANAGER_STREAM_ID_INVALID;
 static audio_config_t audio_config =
     {
@@ -141,15 +142,29 @@ const wiced_transport_cfg_t  transport_cfg =
             .baud_rate =  HCI_UART_DEFAULT_BAUD
         },
     },
+#if BTSTACK_VER >= 0x03000001
+    .heap_config =
+    {
+        .data_heap_size = 1024 * 4 + 1500 * 2,
+        .hci_trace_heap_size = 1024 * 2,
+        .debug_trace_heap_size = 1024,
+    },
+#else
     .rx_buff_pool_cfg =
     {
         .buffer_size  = TRANS_UART_BUFFER_SIZE,
         .buffer_count = 2
     },
+#endif
     .p_status_handler    = hci_control_transport_status,
     .p_data_handler      = hci_control_proc_rx_cmd,
     .p_tx_complete_cback = NULL
 };
+
+#if BTSTACK_VER >= 0x03000001
+#define BT_STACK_HEAP_SIZE          1024 * 7
+wiced_bt_heap_t *p_default_heap = NULL;
+#endif
 
 wiced_bt_sco_params_t handsfree_esco_params =
 {
@@ -507,7 +522,7 @@ static void handsfree_event_callback( wiced_bt_hfp_hf_event_t event, wiced_bt_hf
 
                 handsfree_ctxt_data.init_sco_conn = WICED_FALSE;
             }
-#if defined(CYW20721B2) || defined(CYW43012C0)
+#if defined(CYW20721B2) || defined(CYW43012C0) || defined(CYW55572A1)
             WICED_BT_TRACE("%s - CODEC_SET: %d\n", __func__, p_data->selected_codec);
             if ( p_data->selected_codec == WICED_BT_HFP_HF_MSBC_CODEC ) {
                 handsfree_esco_params.use_wbs = WICED_TRUE;
@@ -575,6 +590,9 @@ wiced_bt_voice_path_setup_t handsfree_sco_path = {
 #else
     .path = WICED_BT_SCO_OVER_PCM,
 #endif
+#if defined(CYW20721B2) || defined (CYW43012C0) || defined(CYW55572A1)
+    .p_sco_data_cb = NULL
+#endif
 };
 
 void handsfree_hfp_init(void)
@@ -585,12 +603,7 @@ void handsfree_hfp_init(void)
     handsfree_init_context_data();
 
     /* Perform the rfcomm init before hf and spp start up */
-#if defined(CYW20719B2) || defined(CYW20721B2) || defined (CYW43012C0)
-    result = wiced_bt_rfcomm_set_buffer_pool( 700, 4);
-#else
-    result = wiced_bt_rfcomm_init( 700, 4 );
-#endif
-    if( (wiced_bt_rfcomm_result_t)result != WICED_BT_RFCOMM_SUCCESS )
+    if( (wiced_bt_rfcomm_result_t)wiced_bt_rfcomm_init( 700, 4 ) != WICED_BT_RFCOMM_SUCCESS )
     {
         WICED_BT_TRACE("Error Initializing RFCOMM - HFP failed\n");
         return;
@@ -652,7 +665,7 @@ void handsfree_write_eir()
     *p++ = 0;
 
     // print EIR data
-    wiced_bt_trace_array( "EIR :", ( uint8_t* )( pBuf+1 ), MIN( p-( uint8_t* )pBuf,100 ) );
+    WICED_BT_TRACE_ARRAY( ( uint8_t* )( pBuf+1 ), MIN( p-( uint8_t* )pBuf,100 ), "EIR :" );
     wiced_bt_dev_write_eir( pBuf, (uint16_t)(p - pBuf) );
 
     return;
@@ -699,7 +712,7 @@ void hf_sco_management_callback( wiced_bt_management_evt_t event, wiced_bt_manag
     switch ( event )
     {
         case BTM_SCO_CONNECTED_EVT:             /**< SCO connected event. Event data: #wiced_bt_sco_connected_t */
-#if defined(CYW20721B2) || defined(CYW43012C0)
+#if defined(CYW20721B2) || defined(CYW43012C0) || defined(CYW55572A1)
             /* setup audio path */
             if (stream_id == WICED_AUDIO_MANAGER_STREAM_ID_INVALID)
             {
@@ -733,7 +746,7 @@ void hf_sco_management_callback( wiced_bt_management_evt_t event, wiced_bt_manag
 
             if (WICED_SUCCESS != wiced_am_stream_set_param(stream_id, AM_MIC_GAIN_LEVEL, (void *) &audio_config.mic_gain))
                 WICED_BT_TRACE("wiced_am_set_param failed\n");
-#endif /* CYW20721B2 || CYW43012C0 */
+#endif
 
             hci_control_send_hf_event( HCI_CONTROL_HF_EVENT_AUDIO_OPEN, p_scb->rfcomm_handle, NULL );
             WICED_BT_TRACE("%s: SCO Audio connected, sco_index = %d [in context sco index=%d]\n", __func__, p_event_data->sco_connected.sco_index, handsfree_ctxt_data.sco_index);
@@ -839,7 +852,11 @@ wiced_result_t handsfree_management_callback(wiced_bt_management_evt_t event, wi
             handsfree_post_bt_init(p_event_data);
 
             //Creating a buffer pool for holding the peer devices's key info
+#if BTSTACK_VER >= 0x03000001
+            p_key_info_pool = wiced_bt_create_pool( "key_info", KEY_INFO_POOL_BUFFER_SIZE, KEY_INFO_POOL_BUFFER_COUNT, NULL );
+#else
             p_key_info_pool = wiced_bt_create_pool( KEY_INFO_POOL_BUFFER_SIZE, KEY_INFO_POOL_BUFFER_COUNT );
+#endif
             WICED_BT_TRACE( "wiced_bt_create_pool %x\n", p_key_info_pool );
 
             wiced_bt_dev_register_hci_trace( hci_control_hci_trace_cback );
@@ -848,8 +865,27 @@ wiced_result_t handsfree_management_callback(wiced_bt_management_evt_t event, wi
             hci_control_send_device_started_evt( );
 #endif
 
-#if defined(CYW20721B2) || defined(CYW43012C0)
+#if defined(CYW20721B2) || defined(CYW43012C0) || defined(CYW55572A1)
+            result = wiced_bt_sco_setup_voice_path(&handsfree_sco_path);
             wiced_am_init();
+            //Open external codec first to prevent DSP download delay later
+            stream_id = wiced_am_stream_open(HFP);
+            if (stream_id == WICED_AUDIO_MANAGER_STREAM_ID_INVALID)
+            {
+                WICED_BT_TRACE("wiced_am_stream_open failed\n");
+            }
+            else
+            {
+                if (wiced_am_stream_close(stream_id) != WICED_SUCCESS)
+                {
+                    WICED_BT_TRACE("Err: wiced_am_stream_close\n");
+                }
+                else
+                {
+                    WICED_BT_TRACE("Init external codec done\n");
+                }
+                stream_id = WICED_AUDIO_MANAGER_STREAM_ID_INVALID;
+            }
 #endif
             break;
 
@@ -863,7 +899,7 @@ wiced_result_t handsfree_management_callback(wiced_bt_management_evt_t event, wi
             break;
 
         case BTM_SCO_DISCONNECTED_EVT:
-#if defined(CYW20721B2) || defined(CYW43012C0)
+#if defined(CYW20721B2) || defined(CYW43012C0) || defined(CYW55572A1)
             if (stream_id != WICED_AUDIO_MANAGER_STREAM_ID_INVALID)
             {
                 if( WICED_SUCCESS != wiced_am_stream_stop(stream_id))
@@ -1024,8 +1060,24 @@ APPLICATION_START()
 
     WICED_BT_TRACE( "Starting Hands-free Application...\n" );
 
+#if BTSTACK_VER >= 0x03000001
+    /* Create default heap */
+    p_default_heap = wiced_bt_create_heap("default_heap", NULL, BT_STACK_HEAP_SIZE, NULL,
+            WICED_TRUE);
+    if (p_default_heap == NULL)
+    {
+        WICED_BT_TRACE("create default heap error: size %d\n", BT_STACK_HEAP_SIZE);
+        return;
+    }
+#endif
+
+#if BTSTACK_VER >= 0x03000001
+    /* Initialize Bluetooth stack */
+    wiced_bt_stack_init( handsfree_management_callback , &handsfree_cfg_settings);
+#else
     /* Initialize Bluetooth stack */
     wiced_bt_stack_init( handsfree_management_callback , &handsfree_cfg_settings, handsfree_cfg_buf_pools);
+#endif
 
     /* Configure Audio buffer */
     wiced_audio_buffer_initialize (handsfree_audio_buf_config);
