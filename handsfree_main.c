@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -33,9 +33,9 @@
 
 /** @file
  *
- * Handsfree Plus Device Sample Application for 2070X/20739B1 devices.
+ * Handsfree Plus Device Sample Application for AIROC embedded devices.
  *
- * This file implements 2070x/20739B1 embedded application controlled over UART.
+ * This file implements an embedded application controlled over UART.
  * Current version of the application exposes Handsfree Device
  *
  * MCU connected over UART can send commands to execute certain functionality
@@ -102,6 +102,7 @@
 #include "wiced_bt_stack.h"
 #include "wiced_bt_ble.h"
 #if defined(CYW20721B2) || defined(CYW43012C0) || defined(CYW55572A1)
+#define HFP_VOLUME_HIGH 15
 #include "wiced_audio_manager.h"
 #endif
 
@@ -129,7 +130,7 @@ static audio_config_t audio_config =
     };
 #endif
 static void hci_control_transport_status( wiced_transport_type_t type );
-static void hfp_timer_expiry_handler( uint32_t param );
+static void hfp_timer_expiry_handler( TIMER_PARAM_TYPE param );
 
 const wiced_transport_cfg_t  transport_cfg =
 {
@@ -699,6 +700,24 @@ void handsfree_post_bt_init(wiced_bt_management_evt_data_t *p_event_data)
     }
 }
 
+#if defined(CYW20721B2) || defined(CYW43012C0) || defined(CYW55572A1)
+static int32_t handsfree_utils_hfp_volume_to_am_volume(int32_t vol)
+{
+    uint32_t remainder;
+    int32_t am_level;
+
+    am_level    = (vol * AM_VOL_LEVEL_HIGH) / HFP_VOLUME_HIGH;
+    remainder   = (vol * AM_VOL_LEVEL_HIGH) % HFP_VOLUME_HIGH;
+
+    if (remainder >= AM_VOL_LEVEL_HIGH)
+    {
+        am_level++;
+    }
+
+    return am_level;
+}
+#endif
+
 /*
  * Process SCO management callback
  */
@@ -730,8 +749,8 @@ void hf_sco_management_callback( wiced_bt_management_evt_t event, wiced_bt_manag
                 audio_config.sr = AM_PLAYBACK_SR_8K;
             }
 
-            audio_config.volume = AM_VOL_LEVEL_HIGH - 2;
-            audio_config.mic_gain = AM_VOL_LEVEL_HIGH - 2;
+            audio_config.volume = handsfree_utils_hfp_volume_to_am_volume(AM_VOL_LEVEL_HIGH - 2);
+            audio_config.mic_gain = handsfree_utils_hfp_volume_to_am_volume(AM_VOL_LEVEL_HIGH - 2);
 
             if( WICED_SUCCESS != wiced_am_stream_set_param(stream_id, AM_AUDIO_CONFIG, &audio_config))
                 WICED_BT_TRACE("wiced_am_set_param failed\n");
@@ -790,7 +809,7 @@ void hf_sco_management_callback( wiced_bt_management_evt_t event, wiced_bt_manag
     UNUSED_VARIABLE(status);
 }
 
-static void hfp_timer_expiry_handler( uint32_t param )
+static void hfp_timer_expiry_handler( TIMER_PARAM_TYPE param )
 {
     /* if sco is not created as an acceptor then remove the sco and create it as initiator. */
     if( handsfree_ctxt_data.call_active && !handsfree_ctxt_data.is_sco_connected )
@@ -868,6 +887,11 @@ wiced_result_t handsfree_management_callback(wiced_bt_management_evt_t event, wi
 #if defined(CYW20721B2) || defined(CYW43012C0) || defined(CYW55572A1)
             result = wiced_bt_sco_setup_voice_path(&handsfree_sco_path);
             wiced_am_init();
+#ifndef CYW43012C0
+            //NOTE: We could pre-download DSP codes via SPI except 43012C0.
+            //43012 switch PTU_FIFO between SPI and UART(SWITCH_PTU_CHECK). If it's a HCI UART application,
+            //we should use SPI after HCI UART(ex: Client Control) connected.
+
             //Open external codec first to prevent DSP download delay later
             stream_id = wiced_am_stream_open(HFP);
             if (stream_id == WICED_AUDIO_MANAGER_STREAM_ID_INVALID)
@@ -886,6 +910,7 @@ wiced_result_t handsfree_management_callback(wiced_bt_management_evt_t event, wi
                 }
                 stream_id = WICED_AUDIO_MANAGER_STREAM_ID_INVALID;
             }
+#endif // !CYW43012C0
 #endif
             break;
 
@@ -1046,7 +1071,7 @@ APPLICATION_START()
 #else
     // Set to PUART to see traces on peripheral uart(puart)
     wiced_set_debug_uart( WICED_ROUTE_DEBUG_TO_PUART );
-#if ( defined(CYW20706A2) || defined(CYW20735B0) || defined(CYW20719B0) || defined(CYW43012C0) )
+#if ( defined(CYW20706A2) || defined(CYW20735B0) || defined(CYW20719B0) )
     wiced_hal_puart_select_uart_pads( WICED_PUART_RXD, WICED_PUART_TXD, 0, 0);
 #endif
 #endif
