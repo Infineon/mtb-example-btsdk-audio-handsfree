@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2023, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -54,7 +54,7 @@
  * MCU implementation on Windows platform.
  *
  * Features demonstrated
- *  - WICED BT Handsfree (Device) APIs
+ *  - AIROC Bluetooth Handsfree (Device) APIs
  *  - Handling of the UART WICED protocol
  *  - SDP configuration
  *  - Setting of the Local Bluetooth Device address from the host MCU
@@ -1009,7 +1009,7 @@ wiced_result_t handsfree_management_callback(wiced_bt_management_evt_t event, wi
             break;
 
         case BTM_PAIRING_IO_CAPABILITIES_BLE_REQUEST_EVT:
-            /* Use the default security for BLE */
+            /* Use the default security for LE */
             WICED_BT_TRACE("BTM_PAIRING_IO_CAPABILITIES_BLE_REQUEST_EVT bda %B\n",
                     p_event_data->pairing_io_capabilities_ble_request.bd_addr);
             p_event_data->pairing_io_capabilities_ble_request.local_io_cap  = BTM_IO_CAPABILITIES_NONE;
@@ -1071,7 +1071,7 @@ APPLICATION_START()
 #else
     // Set to PUART to see traces on peripheral uart(puart)
     wiced_set_debug_uart( WICED_ROUTE_DEBUG_TO_PUART );
-#if ( defined(CYW20706A2) || defined(CYW20735B0) || defined(CYW20719B0) )
+#if ( defined(CYW20706A2) )
     wiced_hal_puart_select_uart_pads( WICED_PUART_RXD, WICED_PUART_TXD, 0, 0);
 #endif
 #endif
