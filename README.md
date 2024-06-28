@@ -25,6 +25,17 @@ Hands-free
   - Control Held calls ( Only support "Release all held", "Release active accept other", "Place active on hold and accept other", "Add held to conversation( It's functionality depends on the telecom network operator, if the telecom network side support the feature, the function will work. AG always supports this feature and responses OK)")
   - Mic / Speaker gain control
 
+## External Codec Board Connection
+
+This app will use an external codec board, meaning that audio will be output/input through an external codec. When using the following development boards, please pair them with the corresponding codec boards.
+
+| EVK                   | Codec Board |
+|-----------------------|-------------|
+| CYW920721M2EVK series | CY9BTAUDIO2 or CY9BTAUDIO3|
+| CYW920721M2EVB-03     | CY9BTAUDIO2 or CY9BTAUDIO3|
+| CYW9M2BASE-43012BT    | CY9BTAUDIO  |
+| CYW943012BTEVK-01     | CY9BTAUDIO2 or CY9BTAUDIO3|
+
 ## BTSTACK version
 
 BTSDK AIROC&#8482; chips contain the embedded AIROC&#8482; Bluetooth&#174; stack, BTSTACK. Different chips use different versions of BTSTACK, so some assets may contain variant sets of files targeting the different versions in COMPONENT\_btstack\_vX (where X is the stack version). Applications automatically include the appropriate folder using the COMPONENTS make variable mechanism, and all BSPs declare which stack version should be used in the BSP .mk file, with a declaration such as:<br>
